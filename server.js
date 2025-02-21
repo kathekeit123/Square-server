@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const nodemailer = require("nodemailer"); // Add this line
 
 const app = express();
 app.use(express.json());
@@ -8,9 +9,54 @@ app.use(cors());
 
 const SQUARE_API_URL = 'https://connect.squareup.com/v2/online-checkout/payment-links';
 
+// Add email transporter configuration
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+    }
+});
+
 app.post("/create-checkout-session", async (req, res) => {
     try {
-        const { price, email, description } = req.body;
+        const { price, email, description, fullBookingData } = req.body;
+
+        // First, send the email
+        const emailHTML = `
+            <h2>New Booking Details</h2>
+            <p><strong>Date:</strong> ${fullBookingData.date}</p>
+            <p><strong>Time:</strong> ${fullBookingData.time}</p>
+            <p><strong>Vehicle:</strong> ${fullBookingData.vehicle}</p>
+            <p><strong>Pickup:</strong> ${fullBookingData.pickup}</p>
+            <p><strong>Dropoff:</strong> ${fullBookingData.dropoff}</p>
+            <p><strong>Stops:</strong> ${fullBookingData.stops?.join(', ') || 'None'}</p>
+            <p><strong>Passengers:</strong> ${fullBookingData.passengers}</p>
+            <p><strong>Kids:</strong> ${fullBookingData.kids}</p>
+            <p><strong>Luggage:</strong> ${fullBookingData.luggage}</p>
+            <p><strong>Phone:</strong> ${fullBookingData.phone}</p>
+            <p><strong>Email:</strong> ${fullBookingData.email}</p>
+            <p><strong>Price:</strong> $${fullBookingData.price}</p>
+            ${fullBookingData.locationType === 'airport' ? `
+                <h3>Airport Details</h3>
+                <p><strong>Airline:</strong> ${fullBookingData.airline}</p>
+                <p><strong>Flight Number:</strong> ${fullBookingData.flightNumber}</p>
+                <p><strong>Arrival Time:</strong> ${fullBookingData.arrivalTime}</p>
+            ` : ''}
+        `;
+
+        try {
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: 'katherinetamara123@gmail.com', // Replace with your email
+                subject: `New Booking - ${fullBookingData.date}`,
+                html: emailHTML
+            });
+            console.log('Email sent successfully');
+        } catch (emailError) {
+            console.error('Error sending email:', emailError);
+            // Continue with payment even if email fails
+        }
 
         // Convert price to smallest currency unit (cents)
         const amountInCents = Math.round(price * 100);
