@@ -6,7 +6,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const SQUARE_API_URL = 'https://connect.squareupsandbox.com/v2/online-checkout/payment-links';
+const SQUARE_API_URL = 'https://connect.squareup.com/v2/online-checkout/payment-links';
 
 app.post("/create-checkout-session", async (req, res) => {
     try {
