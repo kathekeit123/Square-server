@@ -1,7 +1,6 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const nodemailer = require("nodemailer");
 
 const app = express();
 app.use(express.json());
@@ -9,67 +8,13 @@ app.use(cors());
 
 const SQUARE_API_URL = 'https://connect.squareup.com/v2/online-checkout/payment-links';
 
-// Create transporter only when needed
-const createTransporter = () => {
-    return nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 587,
-        secure: false, // upgrade later with STARTTLS
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASSWORD
-        }
-    });
-};
-
 app.post("/create-checkout-session", async (req, res) => {
     try {
-        const { price, email, description, fullBookingData } = req.body;
+        const { price, email, description } = req.body;
 
-        // Validate required data
-        if (!price || !email || !description || !fullBookingData) {
-            throw new Error('Missing required booking data');
-        }
+        // Log the incoming request
+        console.log('Received request:', { price, email, description });
 
-        // Try to send email
-        try {
-            const transporter = createTransporter();
-            const emailHTML = `
-                <h2>New Booking Details</h2>
-                <p><strong>Date:</strong> ${fullBookingData.date}</p>
-                <p><strong>Time:</strong> ${fullBookingData.time}</p>
-                <p><strong>Vehicle:</strong> ${fullBookingData.vehicle}</p>
-                <p><strong>Pickup:</strong> ${fullBookingData.pickup}</p>
-                <p><strong>Dropoff:</strong> ${fullBookingData.dropoff}</p>
-                <p><strong>Stops:</strong> ${fullBookingData.stops?.join(', ') || 'None'}</p>
-                <p><strong>Passengers:</strong> ${fullBookingData.passengers}</p>
-                <p><strong>Kids:</strong> ${fullBookingData.kids}</p>
-                <p><strong>Luggage:</strong> ${fullBookingData.luggage}</p>
-                <p><strong>Phone:</strong> ${fullBookingData.phone}</p>
-                <p><strong>Email:</strong> ${fullBookingData.email}</p>
-                <p><strong>Price:</strong> $${fullBookingData.price}</p>
-                ${fullBookingData.locationType === 'airport' ? `
-                    <h3>Airport Details</h3>
-                    <p><strong>Airline:</strong> ${fullBookingData.airline}</p>
-                    <p><strong>Flight Number:</strong> ${fullBookingData.flightNumber}</p>
-                    <p><strong>Arrival Time:</strong> ${fullBookingData.arrivalTime}</p>
-                ` : ''}
-            `;
-
-            await transporter.sendMail({
-                from: process.env.EMAIL_USER,
-                to: 'katherinetamara123@gmail.com',
-                subject: `New Booking - ${fullBookingData.date}`,
-                html: emailHTML
-            });
-            
-            console.log('Email sent successfully');
-        } catch (emailError) {
-            console.error('Email error:', emailError);
-            // Continue with payment even if email fails
-        }
-
-        // Square payment process
         const amountInCents = Math.round(price * 100);
         const payload = {
             idempotency_key: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
@@ -83,6 +28,9 @@ app.post("/create-checkout-session", async (req, res) => {
             }
         };
 
+        // Log the Square payload
+        console.log('Square payload:', payload);
+
         const response = await fetch(SQUARE_API_URL, {
             method: 'POST',
             headers: {
@@ -94,6 +42,9 @@ app.post("/create-checkout-session", async (req, res) => {
         });
 
         const data = await response.json();
+        
+        // Log the Square response
+        console.log('Square response:', data);
 
         if (!response.ok) {
             throw new Error(data.errors?.[0]?.detail || 'Failed to create payment link');
@@ -111,22 +62,15 @@ app.post("/create-checkout-session", async (req, res) => {
     } catch (error) {
         console.error("Error:", error);
         res.status(500).json({ 
-            error: "Operation failed",
+            error: "Payment session creation failed",
             details: error.message 
         });
     }
 });
 
-// Health check endpoint
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });
 });
 
-// Only start the server if we're not in Vercel
-if (process.env.NODE_ENV !== 'production') {
-    const PORT = process.env.PORT || 3001;
-    app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
-}
-
-// For Vercel
+// Export for Vercel
 module.exports = app;
