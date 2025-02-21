@@ -12,10 +12,9 @@ app.post("/create-checkout-session", async (req, res) => {
     try {
         const { price, email, description } = req.body;
 
-        // Log the incoming request
-        console.log('Received request:', { price, email, description });
-
+        // Convert price to smallest currency unit (cents)
         const amountInCents = Math.round(price * 100);
+
         const payload = {
             idempotency_key: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
             quick_pay: {
@@ -28,9 +27,6 @@ app.post("/create-checkout-session", async (req, res) => {
             }
         };
 
-        // Log the Square payload
-        console.log('Square payload:', payload);
-
         const response = await fetch(SQUARE_API_URL, {
             method: 'POST',
             headers: {
@@ -42,14 +38,12 @@ app.post("/create-checkout-session", async (req, res) => {
         });
 
         const data = await response.json();
-        
-        // Log the Square response
-        console.log('Square response:', data);
 
         if (!response.ok) {
             throw new Error(data.errors?.[0]?.detail || 'Failed to create payment link');
         }
 
+        // Return the payment link URL
         if (data.payment_link?.url) {
             res.json({ 
                 url: data.payment_link.url,
@@ -60,7 +54,7 @@ app.post("/create-checkout-session", async (req, res) => {
         }
 
     } catch (error) {
-        console.error("Error:", error);
+        console.error("Square Payment Error:", error);
         res.status(500).json({ 
             error: "Payment session creation failed",
             details: error.message 
@@ -68,9 +62,10 @@ app.post("/create-checkout-session", async (req, res) => {
     }
 });
 
+// Health check endpoint
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });
 });
 
-// Export for Vercel
-module.exports = app;
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
