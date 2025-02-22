@@ -1,11 +1,20 @@
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+
+const app = express();
+app.use(express.json());
+app.use(cors());
+
+const SQUARE_API_URL = 'https://connect.squareup.com/v2/online-checkout/payment-links';
+
 app.post("/create-checkout-session", async (req, res) => {
     try {
-        const { price, email, description, discountCode } = req.body;
+        const { price, email, description } = req.body;
 
         // Convert price to smallest currency unit (cents)
         const amountInCents = Math.round(price * 100);
 
-        // Base payload
         const payload = {
             idempotency_key: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
             quick_pay: {
@@ -17,14 +26,6 @@ app.post("/create-checkout-session", async (req, res) => {
                 location_id: process.env.SQUARE_LOCATION_ID
             }
         };
-
-        // Add discount if code is provided
-        if (discountCode) {
-            payload.discounts = [{
-                name: "Promo Code",
-                code: discountCode
-            }];
-        }
 
         const response = await fetch(SQUARE_API_URL, {
             method: 'POST',
@@ -57,48 +58,6 @@ app.post("/create-checkout-session", async (req, res) => {
         res.status(500).json({ 
             error: "Payment session creation failed",
             details: error.message 
-        });
-    }
-});
-
-// Add endpoint to validate discount codes
-app.post("/validate-discount", async (req, res) => {
-    try {
-        const { discountCode } = req.body;
-
-        // Call Square Catalog API to check if the discount exists
-        const response = await fetch('https://connect.squareup.com/v2/catalog/search', {
-            method: 'POST',
-            headers: {
-                'Square-Version': '2024-02-20',
-                'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                object_types: ["DISCOUNT"],
-                query: {
-                    exact_query: {
-                        attribute_name: "discount_code",
-                        attribute_value: discountCode
-                    }
-                }
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.objects || data.objects.length === 0) {
-            throw new Error('Invalid discount code');
-        }
-
-        res.json({
-            valid: true,
-            discount: data.objects[0]
-        });
-    } catch (error) {
-        res.status(400).json({ 
-            valid: false,
-            error: error.message 
         });
     }
 });
