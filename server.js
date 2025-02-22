@@ -24,6 +24,12 @@ app.post("/create-checkout-session", async (req, res) => {
                     currency: "USD"
                 },
                 location_id: process.env.SQUARE_LOCATION_ID
+            },
+            // Habilitar la opción de cupones en el checkout
+            checkout_options: {
+                allow_coupons: true,  // Esto permite que se puedan aplicar cupones en el checkout
+                ask_for_shipping_address: false,
+                redirect_url: "https://katherines-amazing-site-45502f.webflow.io/booknow"
             }
         };
 
