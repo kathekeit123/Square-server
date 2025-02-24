@@ -18,6 +18,11 @@ app.post("/create-checkout-session", async (req, res) => {
             return address.split(',')[0];
         };
 
+        // Crear los campos pre-formateados
+        const tripDetails = `Date: ${fullBookingData.date} Time: ${fullBookingData.time}${fullBookingData.locationType === 'airport' ? ` - Flight: ${fullBookingData.flightNumber}` : ''}`;
+        
+        const routeDetails = `From: ${shortenAddress(fullBookingData.pickup)} To: ${shortenAddress(fullBookingData.dropoff)}${fullBookingData.stops?.length ? ` | Stop: ${shortenAddress(fullBookingData.stops[0])}` : ''} | ${fullBookingData.vehicle}`;
+
         const payload = {
             idempotency_key: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
             quick_pay: {
@@ -35,27 +40,15 @@ app.post("/create-checkout-session", async (req, res) => {
                 custom_fields: [
                     {
                         title: "Trip Details",
-                        type: "TEXT",
+                        type: "STRING",
+                        value: tripDetails
                     },
                     {
                         title: "Route & Vehicle",
-                        type: "TEXT",
+                        type: "STRING",
+                        value: routeDetails
                     }
-                ],
-                pre_populated_data: {
-                    buyer_email: email,
-                    custom_fields: [
-                        // Campo 1: Detalles del viaje
-                        `Date: ${fullBookingData.date} | Time: ${fullBookingData.time}
-${fullBookingData.locationType === 'airport' ? `Airline: ${fullBookingData.airline} | Flight: ${fullBookingData.flightNumber}` : ''}`,
-                        
-                        // Campo 2: Ruta y vehículo
-                        `From: ${shortenAddress(fullBookingData.pickup)}
-To: ${shortenAddress(fullBookingData.dropoff)}
-${fullBookingData.stops?.length ? `Stop: ${shortenAddress(fullBookingData.stops[0])}` : ''}
-Vehicle: ${fullBookingData.vehicle} | ${fullBookingData.passengers} adult(s), ${fullBookingData.kids} kid(s)`
-                    ]
-                }
+                ]
             }
         };
 
