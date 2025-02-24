@@ -38,42 +38,26 @@ app.post("/create-checkout-session", async (req, res) => {
                         type: "TEXT",
                     },
                     {
-                        title: "Route",
-                        type: "TEXT",
-                    },
-                    {
-                        title: "Booking Info",
+                        title: "Route & Vehicle",
                         type: "TEXT",
                     }
                 ],
                 pre_populated_data: {
                     buyer_email: email,
                     custom_fields: [
-                        // Detalles básicos
-                        `Date: ${fullBookingData.date} | Time: ${fullBookingData.time}`,
+                        // Campo 1: Detalles del viaje
+                        `Date: ${fullBookingData.date} | Time: ${fullBookingData.time}
+${fullBookingData.locationType === 'airport' ? `Airline: ${fullBookingData.airline} | Flight: ${fullBookingData.flightNumber}` : ''}`,
                         
-                        // Ruta reducida
+                        // Campo 2: Ruta y vehículo
                         `From: ${shortenAddress(fullBookingData.pickup)}
 To: ${shortenAddress(fullBookingData.dropoff)}
-${fullBookingData.stops?.length ? `Stop: ${shortenAddress(fullBookingData.stops[0])}` : ''}`,
-                        
-                        // Info del vehículo y pasajeros
-                        `${fullBookingData.vehicle} | ${fullBookingData.passengers} adult(s), ${fullBookingData.kids} kid(s)`
+${fullBookingData.stops?.length ? `Stop: ${shortenAddress(fullBookingData.stops[0])}` : ''}
+Vehicle: ${fullBookingData.vehicle} | ${fullBookingData.passengers} adult(s), ${fullBookingData.kids} kid(s)`
                     ]
                 }
             }
         };
-
-        // Añadir información de aeropuerto si existe
-        if (fullBookingData.locationType === 'airport') {
-            payload.checkout_options.custom_fields.push({
-                title: "Flight Info",
-                type: "TEXT",
-            });
-            payload.checkout_options.pre_populated_data.custom_fields.push(
-                `${fullBookingData.airline} | Flight: ${fullBookingData.flightNumber}`
-            );
-        }
 
         const response = await fetch(SQUARE_API_URL, {
             method: 'POST',
