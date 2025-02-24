@@ -12,6 +12,8 @@ app.post("/create-checkout-session", async (req, res) => {
     try {
         const { price, email, description, fullBookingData } = req.body;
 
+        console.log('Received request:', { price, email, description, fullBookingData });
+
         // Convert price to smallest currency unit (cents)
         const amountInCents = Math.round(price * 100);
 
@@ -49,25 +51,23 @@ app.post("/create-checkout-session", async (req, res) => {
                 ],
                 pre_populated_data: {
                     buyer_email: email,
-                    buyer_phone_number: fullBookingData.phone,
                     custom_fields: [
-                        `Date: ${fullBookingData.date} | Time: ${fullBookingData.time}
-                        ${fullBookingData.stops?.length ? `Stops: ${fullBookingData.stops.join(', ')}` : ''}`,
+                        // Trip Details
+                        `Date: ${fullBookingData?.date || 'N/A'} | Time: ${fullBookingData?.time || 'N/A'}`,
                         
-                        `From: ${fullBookingData.pickup}
-                        To: ${fullBookingData.dropoff}
-                        ${fullBookingData.locationType === 'airport' ? 
-                        `Airline: ${fullBookingData.airline}
-                        Flight: ${fullBookingData.flightNumber}
-                        Arrival: ${fullBookingData.arrivalTime}` : ''}`,
+                        // Pickup Details
+                        `From: ${fullBookingData?.pickup || 'N/A'}
+                        To: ${fullBookingData?.dropoff || 'N/A'}`,
                         
-                        `Vehicle: ${fullBookingData.vehicle}
-                        Passengers: ${fullBookingData.passengers}
-                        Kids: ${fullBookingData.kids}
-                        Luggage: ${fullBookingData.luggage}`,
+                        // Vehicle & Passengers
+                        `Vehicle: ${fullBookingData?.vehicle || 'N/A'}
+                        Passengers: ${fullBookingData?.passengers || '0'}
+                        Kids: ${fullBookingData?.kids || '0'}
+                        Luggage: ${fullBookingData?.luggage || '0'}`,
                         
-                        `Phone: ${fullBookingData.phone}
-                        Email: ${fullBookingData.email}`
+                        // Contact Information
+                        `Phone: ${fullBookingData?.phone || 'N/A'}
+                        Email: ${email || 'N/A'}`
                     ]
                 }
             }
@@ -89,7 +89,6 @@ app.post("/create-checkout-session", async (req, res) => {
             throw new Error(data.errors?.[0]?.detail || 'Failed to create payment link');
         }
 
-        // Return the payment link URL
         if (data.payment_link?.url) {
             res.json({ 
                 url: data.payment_link.url,
