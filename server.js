@@ -10,7 +10,7 @@ const SQUARE_API_URL = 'https://connect.squareup.com/v2/online-checkout/payment-
 
 app.post("/create-checkout-session", async (req, res) => {
     try {
-        const { price, email, description } = req.body;
+        const { price, email, description, fullBookingData } = req.body;
 
         // Convert price to smallest currency unit (cents)
         const amountInCents = Math.round(price * 100);
@@ -25,11 +25,51 @@ app.post("/create-checkout-session", async (req, res) => {
                 },
                 location_id: process.env.SQUARE_LOCATION_ID
             },
-            // Habilitar la opción de cupones en el checkout
             checkout_options: {
-                allow_coupons: true,  // Esto permite que se puedan aplicar cupones en el checkout
+                allow_coupons: true,
                 ask_for_shipping_address: false,
-                redirect_url: "https://katherines-amazing-site-45502f.webflow.io/booknow"
+                redirect_url: "https://katherines-amazing-site-45502f.webflow.io/booknow",
+                custom_fields: [
+                    {
+                        title: "Trip Details",
+                        type: "TEXT",
+                    },
+                    {
+                        title: "Pickup Details",
+                        type: "TEXT",
+                    },
+                    {
+                        title: "Vehicle & Passengers",
+                        type: "TEXT",
+                    },
+                    {
+                        title: "Contact Information",
+                        type: "TEXT",
+                    }
+                ],
+                pre_populated_data: {
+                    buyer_email: email,
+                    buyer_phone_number: fullBookingData.phone,
+                    custom_fields: [
+                        `Date: ${fullBookingData.date} | Time: ${fullBookingData.time}
+                        ${fullBookingData.stops?.length ? `Stops: ${fullBookingData.stops.join(', ')}` : ''}`,
+                        
+                        `From: ${fullBookingData.pickup}
+                        To: ${fullBookingData.dropoff}
+                        ${fullBookingData.locationType === 'airport' ? 
+                        `Airline: ${fullBookingData.airline}
+                        Flight: ${fullBookingData.flightNumber}
+                        Arrival: ${fullBookingData.arrivalTime}` : ''}`,
+                        
+                        `Vehicle: ${fullBookingData.vehicle}
+                        Passengers: ${fullBookingData.passengers}
+                        Kids: ${fullBookingData.kids}
+                        Luggage: ${fullBookingData.luggage}`,
+                        
+                        `Phone: ${fullBookingData.phone}
+                        Email: ${fullBookingData.email}`
+                    ]
+                }
             }
         };
 
