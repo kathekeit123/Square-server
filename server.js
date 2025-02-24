@@ -11,42 +11,17 @@ const SQUARE_API_URL = 'https://connect.squareup.com/v2/online-checkout/payment-
 app.post("/create-checkout-session", async (req, res) => {
     try {
         const { price, email, description, fullBookingData } = req.body;
-
-        // Convert price to smallest currency unit (cents)
         const amountInCents = Math.round(price * 100);
 
-        // Crear una descripción detallada para el resumen de la orden
-        const orderDescription = `
-Booking Details
-────────────────
-Date: ${fullBookingData.date}
-Time: ${fullBookingData.time}
-Vehicle: ${fullBookingData.vehicle}
-
-Route
-From: ${fullBookingData.pickup}
-To: ${fullBookingData.dropoff}
-${fullBookingData.stops?.length ? `Stops: ${fullBookingData.stops.join(', ')}` : ''}
-
-Passengers: ${fullBookingData.passengers}
-Kids: ${fullBookingData.kids}
-Luggage: ${fullBookingData.luggage}
-
-Contact
-Phone: ${fullBookingData.phone}
-Email: ${fullBookingData.email}
-
-${fullBookingData.locationType === 'airport' ? `
-Flight Info
-Airline: ${fullBookingData.airline}
-Flight: ${fullBookingData.flightNumber}
-Time: ${fullBookingData.arrivalTime}
-` : ''}`;
+        // Función para acortar direcciones
+        const shortenAddress = (address) => {
+            return address.split(',')[0];
+        };
 
         const payload = {
             idempotency_key: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
             quick_pay: {
-                name: orderDescription,
+                name: `Booking for ${fullBookingData.date}`,
                 price_money: {
                     amount: amountInCents,
                     currency: "USD"
@@ -56,9 +31,49 @@ Time: ${fullBookingData.arrivalTime}
             checkout_options: {
                 allow_coupons: true,
                 ask_for_shipping_address: false,
-                redirect_url: "https://katherines-amazing-site-45502f.webflow.io/booknow"
+                redirect_url: "https://katherines-amazing-site-45502f.webflow.io/booknow",
+                custom_fields: [
+                    {
+                        title: "Trip Details",
+                        type: "TEXT",
+                    },
+                    {
+                        title: "Route",
+                        type: "TEXT",
+                    },
+                    {
+                        title: "Booking Info",
+                        type: "TEXT",
+                    }
+                ],
+                pre_populated_data: {
+                    buyer_email: email,
+                    custom_fields: [
+                        // Detalles básicos
+                        `Date: ${fullBookingData.date} | Time: ${fullBookingData.time}`,
+                        
+                        // Ruta reducida
+                        `From: ${shortenAddress(fullBookingData.pickup)}
+To: ${shortenAddress(fullBookingData.dropoff)}
+${fullBookingData.stops?.length ? `Stop: ${shortenAddress(fullBookingData.stops[0])}` : ''}`,
+                        
+                        // Info del vehículo y pasajeros
+                        `${fullBookingData.vehicle} | ${fullBookingData.passengers} adult(s), ${fullBookingData.kids} kid(s)`
+                    ]
+                }
             }
         };
+
+        // Añadir información de aeropuerto si existe
+        if (fullBookingData.locationType === 'airport') {
+            payload.checkout_options.custom_fields.push({
+                title: "Flight Info",
+                type: "TEXT",
+            });
+            payload.checkout_options.pre_populated_data.custom_fields.push(
+                `${fullBookingData.airline} | Flight: ${fullBookingData.flightNumber}`
+            );
+        }
 
         const response = await fetch(SQUARE_API_URL, {
             method: 'POST',
