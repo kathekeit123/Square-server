@@ -10,9 +10,7 @@ const SQUARE_API_URL = 'https://connect.squareup.com/v2/online-checkout/payment-
 
 app.post("/create-checkout-session", async (req, res) => {
     try {
-        const { price, email, description, fullBookingData } = req.body;
-
-        console.log('Received request:', { price, email, description, fullBookingData });
+        const { price, email, description } = req.body;
 
         // Convert price to smallest currency unit (cents)
         const amountInCents = Math.round(price * 100);
@@ -27,49 +25,11 @@ app.post("/create-checkout-session", async (req, res) => {
                 },
                 location_id: process.env.SQUARE_LOCATION_ID
             },
+            // Habilitar la opción de cupones en el checkout
             checkout_options: {
-                allow_coupons: true,
+                allow_coupons: true,  // Esto permite que se puedan aplicar cupones en el checkout
                 ask_for_shipping_address: false,
-                redirect_url: "https://katherines-amazing-site-45502f.webflow.io/booknow",
-                custom_fields: [
-                    {
-                        title: "Trip Details",
-                        type: "TEXT",
-                    },
-                    {
-                        title: "Pickup Details",
-                        type: "TEXT",
-                    },
-                    {
-                        title: "Vehicle & Passengers",
-                        type: "TEXT",
-                    },
-                    {
-                        title: "Contact Information",
-                        type: "TEXT",
-                    }
-                ],
-                pre_populated_data: {
-                    buyer_email: email,
-                    custom_fields: [
-                        // Trip Details
-                        `Date: ${fullBookingData?.date || 'N/A'} | Time: ${fullBookingData?.time || 'N/A'}`,
-                        
-                        // Pickup Details
-                        `From: ${fullBookingData?.pickup || 'N/A'}
-                        To: ${fullBookingData?.dropoff || 'N/A'}`,
-                        
-                        // Vehicle & Passengers
-                        `Vehicle: ${fullBookingData?.vehicle || 'N/A'}
-                        Passengers: ${fullBookingData?.passengers || '0'}
-                        Kids: ${fullBookingData?.kids || '0'}
-                        Luggage: ${fullBookingData?.luggage || '0'}`,
-                        
-                        // Contact Information
-                        `Phone: ${fullBookingData?.phone || 'N/A'}
-                        Email: ${email || 'N/A'}`
-                    ]
-                }
+                redirect_url: "https://katherines-amazing-site-45502f.webflow.io/booknow"
             }
         };
 
@@ -89,6 +49,7 @@ app.post("/create-checkout-session", async (req, res) => {
             throw new Error(data.errors?.[0]?.detail || 'Failed to create payment link');
         }
 
+        // Return the payment link URL
         if (data.payment_link?.url) {
             res.json({ 
                 url: data.payment_link.url,
