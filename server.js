@@ -10,45 +10,26 @@ const SQUARE_API_URL = 'https://connect.squareup.com/v2/online-checkout/payment-
 
 app.post("/create-checkout-session", async (req, res) => {
     try {
-        const { price, email, description, fullBookingData } = req.body;
+        const { price, email, description } = req.body;
+
+        // Convert price to smallest currency unit (cents)
         const amountInCents = Math.round(price * 100);
-
-        // Función para acortar direcciones
-        const shortenAddress = (address) => {
-            return address.split(',')[0];
-        };
-
-        // Crear los campos pre-formateados
-        const tripDetails = `Date: ${fullBookingData.date} Time: ${fullBookingData.time}${fullBookingData.locationType === 'airport' ? ` - Flight: ${fullBookingData.flightNumber}` : ''}`;
-        
-        const routeDetails = `From: ${shortenAddress(fullBookingData.pickup)} To: ${shortenAddress(fullBookingData.dropoff)}${fullBookingData.stops?.length ? ` | Stop: ${shortenAddress(fullBookingData.stops[0])}` : ''} | ${fullBookingData.vehicle}`;
 
         const payload = {
             idempotency_key: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
             quick_pay: {
-                name: `Booking for ${fullBookingData.date}`,
+                name: description || "Payment",
                 price_money: {
                     amount: amountInCents,
                     currency: "USD"
                 },
                 location_id: process.env.SQUARE_LOCATION_ID
             },
+            // Habilitar la opción de cupones en el checkout
             checkout_options: {
-                allow_coupons: true,
+                allow_coupons: true,  // Esto permite que se puedan aplicar cupones en el checkout
                 ask_for_shipping_address: false,
-                redirect_url: "https://katherines-amazing-site-45502f.webflow.io/booknow",
-                custom_fields: [
-                    {
-                        title: "Trip Details",
-                        type: "STRING",
-                        value: tripDetails
-                    },
-                    {
-                        title: "Route & Vehicle",
-                        type: "STRING",
-                        value: routeDetails
-                    }
-                ]
+                redirect_url: "https://katherines-amazing-site-45502f.webflow.io/booknow"
             }
         };
 
@@ -68,6 +49,7 @@ app.post("/create-checkout-session", async (req, res) => {
             throw new Error(data.errors?.[0]?.detail || 'Failed to create payment link');
         }
 
+        // Return the payment link URL
         if (data.payment_link?.url) {
             res.json({ 
                 url: data.payment_link.url,
@@ -85,6 +67,7 @@ app.post("/create-checkout-session", async (req, res) => {
         });
     }
 });
+
 // Health check endpoint
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });
