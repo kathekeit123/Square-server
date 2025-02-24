@@ -10,24 +10,51 @@ const SQUARE_API_URL = 'https://connect.squareup.com/v2/online-checkout/payment-
 
 app.post("/create-checkout-session", async (req, res) => {
     try {
-        const { price, email, description } = req.body;
+        const { price, email, description, fullBookingData } = req.body;
 
         // Convert price to smallest currency unit (cents)
         const amountInCents = Math.round(price * 100);
 
+        // Crear una descripción detallada para el resumen de la orden
+        const orderDescription = `
+Booking Details
+────────────────
+Date: ${fullBookingData.date}
+Time: ${fullBookingData.time}
+Vehicle: ${fullBookingData.vehicle}
+
+Route
+From: ${fullBookingData.pickup}
+To: ${fullBookingData.dropoff}
+${fullBookingData.stops?.length ? `Stops: ${fullBookingData.stops.join(', ')}` : ''}
+
+Passengers: ${fullBookingData.passengers}
+Kids: ${fullBookingData.kids}
+Luggage: ${fullBookingData.luggage}
+
+Contact
+Phone: ${fullBookingData.phone}
+Email: ${fullBookingData.email}
+
+${fullBookingData.locationType === 'airport' ? `
+Flight Info
+Airline: ${fullBookingData.airline}
+Flight: ${fullBookingData.flightNumber}
+Time: ${fullBookingData.arrivalTime}
+` : ''}`;
+
         const payload = {
             idempotency_key: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
             quick_pay: {
-                name: description || "Payment",
+                name: orderDescription,
                 price_money: {
                     amount: amountInCents,
                     currency: "USD"
                 },
                 location_id: process.env.SQUARE_LOCATION_ID
             },
-            // Habilitar la opción de cupones en el checkout
             checkout_options: {
-                allow_coupons: true,  // Esto permite que se puedan aplicar cupones en el checkout
+                allow_coupons: true,
                 ask_for_shipping_address: false,
                 redirect_url: "https://katherines-amazing-site-45502f.webflow.io/booknow"
             }
@@ -49,7 +76,6 @@ app.post("/create-checkout-session", async (req, res) => {
             throw new Error(data.errors?.[0]?.detail || 'Failed to create payment link');
         }
 
-        // Return the payment link URL
         if (data.payment_link?.url) {
             res.json({ 
                 url: data.payment_link.url,
@@ -67,7 +93,6 @@ app.post("/create-checkout-session", async (req, res) => {
         });
     }
 });
-
 // Health check endpoint
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });
