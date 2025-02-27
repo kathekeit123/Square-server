@@ -39,7 +39,7 @@ app.post("/create-checkout-session", async (req, res) => {
             checkout_options: {
                 allow_coupons: true,
                 ask_for_shipping_address: false,
-                redirect_url: "https://www.jrodtransportation.com/payment-success"
+                redirect_url: "https://www.jrodtransportation.com/booknow"
             },
             // Adjuntar datos adicionales del formulario para referencia posterior
             additional_data: {
